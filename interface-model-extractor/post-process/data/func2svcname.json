@@ -94,6 +94,11 @@
         "interfaceToken": "android.hardware.ICameraServiceProxy",
         "interfaceName":"ICameraServiceProxy"
     },
+    "BnDnsResolver" :{
+        "serviceName" : "android.net.BnDnsResolver",
+        "interfaceToken": "android.net.IDnsResolver",
+        "interfaceName": "IDnsResolver"
+    },
     "BnResourceManagerService": {
         "serviceName": "media.resource_manager",
         "interfaceToken": "android.media.IResourceManagerService",
@@ -178,6 +183,11 @@
         "serviceName": "android.security.keystore",
         "interfaceToken": "android.security.IKeystoreService",
         "interfaceName":"IKeystoreService"
+    },
+    "BnKeystoreKeyCharacteristicsCallback":{
+        "serviceName": "android.security.keysotre",
+        "interfaceToken": "android.security.IKeystoreKeyCharacteristicsCallback",
+        "interfaceName": "IKeystoreKeyCharacteristicsCallback"
     },
     "BnMediaExtractorUpdateService": {
         "serviceName": "media.extractor.update",
@@ -429,6 +439,11 @@
         "interfaceToken": "android.net.wifi.IApInterface",
         "interfaceName":"IApInterface"
     },
+    "BnSendMgmtFrameEvent":{
+        "serviceName": "None",
+        "interfaceToken": "android.net.wifi.ISendMgmtFrameEvent",
+        "interfaceName": "ISendMgmtFrameEvent"
+    },
     "BnApInterfaceEventCallback": {
         "serviceName": "None",
         "interfaceToken": "android.net.wifi.IApInterfaceEventCallback",
@@ -662,5 +677,45 @@
         "serviceName": "None",
         "interfaceToken": "android.display.IQClient",
         "interfaceName":"IQClient"
+    },
+    "BnTransactionCompletedListener":{
+        "serviceName": "None",
+        "interfaceToken": "android.ITransactionCompletedListener",
+        "interfaceName":"ITransactionCompletedListener"
+    },
+    "BnRegionSamplingListener":{
+        "serviceName": "None",
+        "interfaceToken": "android.IRegionSamplingListener",
+        "interfaceName": "IRegionSamplingListener"
+    },
+    "BnKeystoreResponseCallback":{
+        "serviceName": "None",
+        "interfaceToken": "android.security.keystore.IKeystoreResponseCallback",
+        "interfaceName": "IKeystoreResponseCallback"
+    },
+    "BnKeystoreExportKeyCallback":{
+        "serviceName": "None",
+        "interfaceToken": "android.security.keystore.IKeystoreExportKeyCallback",
+        "interfaceName": "IKeystoreExportKeyCallback"
+    },
+    "BnKeystoreOperationResultCallback":{
+        "serviceName": "None",
+        "interfaceToken": "android.security.keystore.IKeystoreOperationResultCallback",
+        "interfaceName": "IKeystoreOperationResultCallback"
+    },
+    "BnKeystoreCertificateChainCallback":{
+        "serviceName": "None",
+        "interfaceToken": "android.security.keystore.IKeystoreCertificateChainCallback",
+        "interfaceName": "IKeystoreCertificateChainCallback"
+    },
+    "BnNetdUnsolicitedEventListener":{
+        "serviceName": "None",
+        "interfaceToken": "android.net.INetdUnsolicitedEventListener",
+        "interfaceName" : "INetdUnsolicitedEventListener"
+    },
+    "BnStatsPullerCallback":{
+        "serviceName": "None",
+        "interfaceToken": "android.os.IStatsPullerCallback",
+        "interfaceName": "IStatsPullerCallback"
     }
 }

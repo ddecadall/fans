@@ -112,8 +112,11 @@ def main():
     aosp_compilation_cmd_file = cfg["aosp_compilation_cmd_file"]
     with open(aosp_compilation_cmd_file, 'r') as f:
         for line in f:
+
             if "prebuilts/clang" not in line:
                 continue
+            
+            #print(line)
             if "mkdir -p" in line or "rm -f" in line:
                 continue
             if "out/soong/host/linux-x86/bin/aidl-cpp" in line:
@@ -131,6 +134,7 @@ def main():
                 continue
             if relative_filepath in service_related_files:
                 continue
+            
             if relative_filepath.endswith(
                     ".cpp") or relative_filepath.endswith(".cc"):
                 interfaces = try_get_interfaces(relative_filepath)

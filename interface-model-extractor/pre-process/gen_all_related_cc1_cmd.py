@@ -17,14 +17,21 @@ if os.path.exists(aosp_compilation_cc1_cmd_file):
 
 def gen_cc1_cmd(cmd, filepath):
     compile_cmd = cmd.split('] ')[1].strip()
+    #print(compile_cmd)
     if "/bin/bash -c" in cmd:
         cmd = compile_cmd[:-1] + " -v 2>&1 | grep %s" % aosp_clang_location + '"'
     else:
         cmd = compile_cmd + " -v 2>&1 | grep %s" % aosp_clang_location
+    #for aosp 10 
+    if "PWD=" in cmd:
+        cmd = cmd.replace("PWD=","")
+    if cmd.startswith("/proc/self/cwd "):
+        cmd = cmd.replace("/proc/self/cwd ","")
 
+   # print(cmd)
     os.chdir(aosp_dir)
     result = os.popen(cmd).read().strip()
-    # print(filepath, result)
+    print(filepath, result)
     cc1_cmd[filepath] = result
 
 

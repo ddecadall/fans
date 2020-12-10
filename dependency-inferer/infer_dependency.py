@@ -275,6 +275,8 @@ def gen_interface_dependency():
         for name in serviceMap.keys():
             # 1. the data should be in the service
             # 2. the data must be a sp<>
+            if data["filename"] == name : 
+                print(data)
             if data["filename"] == name and "sp<" in data[
                     "varType"] and ">" in data["varType"]:
                 dependency = get_interface("Bn" + data["varType"].split(

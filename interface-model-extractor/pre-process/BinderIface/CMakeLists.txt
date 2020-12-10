@@ -9,7 +9,8 @@ if( NOT MSVC ) # MSVC mangles symbols differently, and
   endif()
 endif()
 
-add_llvm_loadable_module(BinderIface BinderIface.cpp PLUGIN_TOOL clang)
+#add_llvm_loadable_module(BinderIface BinderIface.cpp PLUGIN_TOOL clang)
+add_llvm_library(BinderIface MODULE BinderIface.cpp PLUGIN_TOOL clang)
 SET(CMAKE_INSTALL_RPATH "")
 if(LLVM_ENABLE_PLUGINS AND (WIN32 OR CYGWIN))
   target_link_libraries(BinderIface PRIVATE

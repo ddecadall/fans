@@ -9,7 +9,7 @@ import os
 import re
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)
+logger.setLevel(logging.DEBUG)
 
 
 class ASTVisitor:
@@ -184,12 +184,19 @@ class ASTVisitor:
                 cls_var = cls_var["lhs"]
 
                 member["name"] = cls_var["name"] + "." + member["name"]
+            elif "CXXStaticCastExpr" in memberexpr:
+                #add by -death 
+                clas_var = self.walk_cxx_static_cast_expr(memberexpr["CXXStaticCastExpr"])
+                member["name"] = clas_var["name"] + "." + member["name"]
             else:
+                logger.error(memberexpr)
                 logger.error("MemberExpr is not completed when len=4.")
                 exit(0)
         return member
 
     def walk_unaryoperator(self, unaryoperator):
+        logger.debug("start walking unary operator")
+        
         opcode = unaryoperator["opcode"]["$"]
         unary = OrderedDict()
         if len(unaryoperator) == 1:
@@ -216,7 +223,7 @@ class ASTVisitor:
             op = OrderedDict()
             op[key] = unaryoperator[key]
             var = self.get_variable_info(op)
-
+       # logger.debug("var : " + str(var))
         unary["opcode"] = opcode
         if opcode == "*":
             var["type"] = var["type"].strip("*")
@@ -224,6 +231,25 @@ class ASTVisitor:
             if var["type"]=="IntegerLiteral":
                 var["value"]= -var["value"]
         unary["lhs"] = var
+        #add by -death 
+        # when there is double unary, it will not get the type, so i need to asign it to other type
+        #special case  var has no name and type maybe condition
+        if "type" not in unary:
+            if "type" in var:
+                unary["type"] = var["type"]
+            else:
+                if ("lhs" in var)&("rhs" in var):
+                    unary["type"]="IntegerLiteral"
+                else:
+                    logger.error("no type in var ? : "+str(var))
+        if "name" not in unary:
+            if "name" in var:
+                unary["name"] = var["name"]
+            else:
+                if ("lhs" in var)&("rhs" in var):
+                    unary["name"]=var["lhs"]
+                else:
+                    logger.error("no name in var ? : "+str(var))
         return unary
 
     def walk_unary_expr_or_type_trait_expr(self, expr):
@@ -517,18 +543,32 @@ class ASTVisitor:
 
     def walk_cxx_static_cast_expr(self, expr):
         logger.debug("Start walking CXXStaticCastExpr.")
-
+        logger.debug(expr)
         kind = expr["type"]["$"]
         key = expr.keys()[1]
         tmp = OrderedDict()
         tmp[key] = expr[key]
         var = self.get_variable_info(tmp)
+        logger.debug(var)
+        logger.debug(kind)
         if "type" in var:
             simplified_var_type = self.get_simplified_type(var["type"])
             if kind in basic_types and kind != "_Bool":
                 if simplified_var_type not in basic_types:
                     logger.debug("Finish walking CXXStaticCastExpr.")
                     return var
+        # there has some interesting bug , but i dont know how to handle it yet . so i just bypass it and leave it to latter
+        if key.startswith("UnaryOperator"):
+            if "lhs" not in var:
+                logger.error("why not lhs in unary operator")
+                logger.error(var)
+                exit(0)
+            var["type"] = kind
+            if "name" in var["lhs"]:
+                var["name"] = var["lhs"]["name"]
+            logger.debug("Finish walking CXXStaticCastExpr.")
+            return var
+                
         if "IBinder" not in kind and \
             "void *" not in kind and \
             "android::Parcelable" not in kind and \
@@ -541,6 +581,7 @@ class ASTVisitor:
             "class" not in var["type"] and \
                 "struct" not in var["type"]:
             var["type"] = kind
+            #logger.debug("why not in this")
             if self.parcel_manager.is_variable_exists(var["name"]):
                 self.parcel_manager.update_variable_attr(var["name"], "type", var["type"])
         logger.debug("Finish walking CXXStaticCastExpr.")
@@ -580,7 +621,10 @@ class ASTVisitor:
     def walk_argv(self, argvs):
         logger.debug("Start walking argv.")
         argv_list = []
+        logger.debug(argvs)
         for key, argv in argvs.items():
+            logger.debug("for argvs")
+            logger.debug(argv)
             var = OrderedDict()
             if key.startswith("UnaryOperator"):
                 var = self.walk_unaryoperator(argv)
@@ -656,6 +700,7 @@ class ASTVisitor:
                 info[key] = argv
                 var = self.get_variable_info(info)
 
+            logger.debug(var)
             argv_list.append(var)
         logger.debug("Finish walking argv.")
         return argv_list
@@ -759,6 +804,9 @@ class ASTVisitor:
                 func["name"] = qualified_function_name
             elif key == "argv":
                 argv = self.walk_argv(value)
+                logging.error("function name : " + str(func))
+                logging.error("argv : " + str(value))
+                logging.error("argv : " + str(argv))
                 for item in argv:
                     # special for ConditionalOperator
                     # TODO: Parcel might in ConditionalOperator
@@ -769,10 +817,12 @@ class ASTVisitor:
                     is_argv_related_with_parcel = True
             elif key == "ReturnType":
                 return_var["type"] = value["$"]
+            elif key == "LookupExpr":
+                logger.debug("lookup" + str(value))
             else:
                 logging.error("unpected key meeted when walking call: "+str(key))
-        logging.info("function name     : " + str(func["name"]))
-        logging.info("argument list: " + str(argv))
+        logging.info("function name     : " + str(func))
+        #logging.info("argument list: " + str(argv))
 
         # step 2. deal with the function.
         # input("deal with "+qualified_function_name)
@@ -1318,6 +1368,7 @@ class ASTVisitor:
                 self.add_argv(var, argv)
                 serialization_type = SerializationType.COMMON
                 # http://androidxref.com/9.0.0_r3/xref/frameworks/av/media/libmediaplayerservice/MediaPlayerService.cpp#982
+                # these method need to be add at runtime for different version
                 if qualified_function_name == "android::IMediaPlayer::setMetadataFilter" or \
                         qualified_function_name == "android::IMediaPlayer::setParameter" or \
                         qualified_function_name == "android::setSchedPolicy" or \
@@ -1332,6 +1383,12 @@ class ASTVisitor:
                         qualified_function_name == "android::MediaPlayerService::Client::setAudioAttributes_l" or \
                         qualified_function_name == "android::os::PersistableBundle::readFromParcelInner" or\
                         qualified_function_name == "keystore::readKeymasterBlob" or \
+                        qualified_function_name == "android::InputWindowCommands::read" or \
+                        qualified_function_name == "readAudioAttributes"  or \
+                        qualified_function_name == "iorap::binder::AppLaunchEvent::readIntent" or \
+                        qualified_function_name == "iorap::binder::AppLaunchEvent::readActivityRecordProto" or \
+                        qualified_function_name == "iorap::binder::AppLaunchEvent::readActivityRecordProtoNullable"  or \
+                        qualified_function_name == "android::MediaAnalyticsItem::readFromParcel0" or \
                         qualified_function_name == "android::MediaPlayerBase::setParameter":
                     serialization_type = SerializationType.INPUT
                 elif qualified_function_name == "android::IMediaExtractor::getMetrics" or \
@@ -1352,6 +1409,11 @@ class ASTVisitor:
                         qualified_function_name == "android::NuPlayer::getTrackInfo" or \
                         qualified_function_name == "android::NuPlayer::getSelectedTrack" or \
                         qualified_function_name == "android::os::PersistableBundle::writeToParcelInner" or \
+                        qualified_function_name == "writeAudioAttributes" or \
+                        qualified_function_name == "android::MediaAnalyticsItem::writeToParcel0" or \
+                        qualified_function_name == "iorap::binder::AppLaunchEvent::writeIntent" or \
+                        qualified_function_name == "iorap::binder::AppLaunchEvent::writeActivityRecordProto" or \
+                        qualified_function_name == "iorap::binder::AppLaunchEvent::writeActivityRecordProtoNullable" or \
                         qualified_function_name == "keystore::writeKeymasterBlob":
                     serialization_type = SerializationType.OUTPUT
                 elif qualified_function_name == "android::IMediaPlayer::invoke" or \
@@ -1373,9 +1435,15 @@ class ASTVisitor:
         else:
             if non_qualified_function_name == "asBinder":
                 # special case.
-                if argv[0]["type"]=="class android::IGraphicBufferProducer":
-                    argv[0]["type"]="class android::sp<class android::IGraphicBufferProducer>"
-                return_var = argv[0]
+                # modified by -death asbinder has no arg, i dont know why
+                #logger.error(get_formatted_json(expr))
+                if len(argv)==0:
+                    return_var["type"] = "class ndk::SpAIBinder"
+                else:
+                    if argv[0]["type"]=="class android::IGraphicBufferProducer":
+                        argv[0]["type"]="class android::sp<class android::IGraphicBufferProducer>"
+                    return_var = argv[0]
+
             elif non_qualified_function_name == "asInterface":
                 return_var = argv[0]
             elif non_qualified_function_name == "interface_cast":
@@ -1401,8 +1469,7 @@ class ASTVisitor:
                     argv[0]["name"], "type", "vector<class android::sp<class android::net::wifi::IApInterface>>")
             elif non_qualified_function_name == "dup":
                 return_var = argv[0]
-            elif "android::base::unique_fd_impl<android::base::DefaultCloser>::operator int" in func[
-                    "name"]:
+            elif "android::base::unique_fd_impl<android::base::DefaultCloser>::operator int" in func["name"]:
                 # special...
                 # func["name"] has been set to b, e.g a.b
                 return_var["name"] = self.walk_memberexpr(
@@ -1481,6 +1548,7 @@ class ASTVisitor:
                 pass
         if "name" not in return_var:
             return_var["name"] = self.parcel_manager.alloc_variable()
+
         return return_var
 
     def update_var_assgin(self, lhs, rhs):
@@ -1695,7 +1763,7 @@ class ASTVisitor:
 
         # get the constraint
         constraint = OrderedDict()
-
+        logger.debug(tmp[0])
         if "CXXOperatorCallExpr" in tmp[0]:
             opcode, lhs, rhs = self.walk_cxxoperatorcallexpr(
                 tmp[0]["CXXOperatorCallExpr"])
@@ -1727,10 +1795,20 @@ class ASTVisitor:
             # print(tmp[0])
             constraint["lhs"] = self.walk_memberexpr(tmp[0]["MemberExpr"])
             constraint["status"] = True
-        elif "ImplicitCastExpr" in tmp[0]:
+        elif ("ImplicitCastExpr" in tmp[0]):
             constraint["opcode"] = ""
             constraint["lhs"] = self.walk_implicitcastexpr(
                 tmp[0]["ImplicitCastExpr"])
+            constraint["status"] = True
+        elif ("ImplicitCastExpr1" in tmp[0]):
+            constraint["opcode"] = ""
+            constraint["lhs"] = self.walk_implicitcastexpr(
+                tmp[0]["ImplicitCastExpr1"])
+            constraint["status"] = True
+        elif ("ImplicitCastExpr2" in tmp[0]):
+            constraint["opcode"] = ""
+            constraint["lhs"] = self.walk_implicitcastexpr(
+                tmp[0]["ImplicitCastExpr2"])
             constraint["status"] = True
         else:
             logger.error("walk conditional operator is not completed..")

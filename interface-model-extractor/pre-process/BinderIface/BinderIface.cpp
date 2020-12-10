@@ -4,7 +4,7 @@
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendPluginRegistry.h"
 #include "clang/Sema/Sema.h"
-#include "clang/Tooling/Core/QualTypeNames.h"
+#include "clang/AST/QualTypeNames.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cstdlib>
 #include <iostream>
@@ -173,7 +173,7 @@ namespace BinderIface
       // QualType tmp = clang::TypeName::getFullyQualifiedType(qualType, this->context, true)
       string canonicalType = qualType.getCanonicalType().getAsString();
       string originalType = qualType.getAsString();
-      string qualifiedType = clang::TypeName::getFullyQualifiedName(qualType, *this->context);
+      string qualifiedType = clang::TypeName::getFullyQualifiedName(qualType, *this->context,this->context->getPrintingPolicy());
 
       cout << "originalType: " << originalType << endl;
       cout << "canonicalType: " << canonicalType << endl;
@@ -266,7 +266,9 @@ namespace BinderIface
         return qualifiedType;
       }
     }
-
+  /*
+  针对不同的指令解析
+  */
     xmlNodePtr WalkIntegerLiteral(IntegerLiteral *integerliteral)
     {
       xmlNodePtr currnode;
@@ -818,14 +820,21 @@ namespace BinderIface
       vector<string> vdecl;
       bool callExists = false;
       llvm::APSInt apsInt;
-      if (implicitcastexpr->EvaluateAsInt(apsInt, *(this->context)))
+      Expr::EvalResult tmp_result;
+      const clang::ASTContext* tmp_ctx = this->context;
+      //modified by -death
+      // evaluateAsInt(APSInt,ASTContext) not in this version clang
+      //so i change it to evaluateAsInt(EvalResult, ASTContext)
+      //if (dynamic_cast<Expr*>(implicitcastexpr)->EvaluateAsInt(apsInt, *(tmp_ctx)))
+      if(implicitcastexpr->EvaluateAsInt(tmp_result,*tmp_ctx))
       {
         // means this is a Int
         // cout << "value: " << apsInt.getExtValue() << endl;
         xmlNodePtr constant;
         constant = xmlNewNode(NULL, BAD_CAST "IntegerLiteral");
         xmlNewTextChild(constant, NULL, BAD_CAST "value",
-                        BAD_CAST to_string(apsInt.getExtValue()).c_str());
+                       // BAD_CAST to_string(apsInt.getExtValue()).c_str());
+                       BAD_CAST to_string(tmp_result.Val.getInt().getExtValue()).c_str());
         Expr *expr = implicitcastexpr->getSubExpr();
         if (DeclRefExpr *decl = dyn_cast<DeclRefExpr>(expr))
         {
@@ -1280,16 +1289,31 @@ namespace BinderIface
       }
       return currnode;
     }
+    /*
+    add by -death
+    not sure whether it's right or wrong.just make it later to solve
+    */
+    xmlNodePtr WalkUnresolvedLookupExpr(UnresolvedLookupExpr *unresolve){
+      //DebugInfo(unresolve->getNamingClass()->getName());
+      xmlNodePtr currnode = xmlNewNode(NULL,BAD_CAST"LookupExpr");
+      return currnode;
+    }
+    /*
+    add by -death end
+    */
+
     xmlNodePtr WalkCallExpr(CallExpr *callexpr)
     {
+
+      
       string funccalls = "", funcname = "", decl;
 
-      // DebugInfo("Starting Visiting CallExpr");
+       DebugInfo("Starting Visiting CallExpr");
       Expr *expr = callexpr->getCallee();
       string type = getType(callexpr->getType());
 
-      // DebugInfo("Return Type Info: " + type);
-      // expr->dump();
+       DebugInfo("Return Type Info: " + type);
+      expr->dump();
       xmlNodePtr currnode, tmpnode, argvnode = NULL, funcnode = NULL,
                                     funccont = NULL;
       currnode = xmlNewNode(NULL, BAD_CAST "CallExpr");
@@ -1298,12 +1322,13 @@ namespace BinderIface
                       BAD_CAST type.c_str());
       if (MemberExpr *memexpr = dyn_cast<MemberExpr>(expr))
       {
+        //DebugInfo(" to member expr");
         funcnode = WalkMemberExpr(memexpr);
         xmlAddChild(currnode, funcnode);
       }
-      else if (ImplicitCastExpr *implicitcastexpr =
-                   dyn_cast<ImplicitCastExpr>(expr))
+      else if (ImplicitCastExpr *implicitcastexpr = dyn_cast<ImplicitCastExpr>(expr))
       {
+       // DebugInfo(" to implicit castexpr ");
         tmpnode = WalkImplicitCastExpr(implicitcastexpr);
         funcnode = xmlNewNode(NULL, BAD_CAST "MemberExpr");
         xmlAddChild(funcnode, tmpnode);
@@ -1311,16 +1336,31 @@ namespace BinderIface
       }
       else if (CXXDependentScopeMemberExpr *cxxdepend = dyn_cast<CXXDependentScopeMemberExpr>(expr))
       {
+       
+      //  DebugInfo(" to mCXXDependent ScopeMember expr");
         funcnode = WalkCXXDependentScopeMemberExpr(cxxdepend);
         xmlAddChild(currnode, funcnode);
       }
       else if (UnresolvedMemberExpr *unresolved = dyn_cast<UnresolvedMemberExpr>(expr))
       {
+     //   DebugInfo(" to unresolved member expr");
         funcnode = WalkUnresolvedMemberExpr(unresolved);
         xmlAddChild(currnode, funcnode);
       }
+      /*
+      add by -death
+      */
+      else if(UnresolvedLookupExpr *unresolved = dyn_cast<UnresolvedLookupExpr>(expr))
+      {
+        funcnode = WalkUnresolvedLookupExpr(unresolved);
+        xmlAddChild(currnode,funcnode);
+      }
+      /*
+      add by -death end
+      */
       else if (ParenExpr *parenexpr = dyn_cast<ParenExpr>(expr))
       {
+        DebugInfo(" to [paren]expr");
         funcnode = WalkParenExpr(parenexpr);
         xmlAddChild(currnode, funcnode);
       }
@@ -1692,8 +1732,10 @@ namespace BinderIface
       if (const DeclStmt *decl = ifstmt->getConditionVariableDeclStmt())
       {
         xmlNodePtr varnode = NULL;
-        DeclStmt stmt1 = *decl;
-        varnode = WalkDeclStmt(&stmt1);
+        //DeclStmt stmt1 = *decl;
+        //varnode = WalkDeclStmt(&stmt1);
+       DeclStmt* tmp_decl = (DeclStmt*)decl;
+        varnode = WalkDeclStmt(tmp_decl);
         xmlAddChild(currnode, varnode);
       }
       Expr *cond = ifstmt->getCond();
@@ -1930,10 +1972,14 @@ namespace BinderIface
         // expr->dump();
         if (ImplicitCastExpr *icastexpr = dyn_cast<ImplicitCastExpr>(expr))
         {
-          APSInt apsInt;
-          if (icastexpr->EvaluateAsInt(apsInt, *(this->context)))
+          // same as above
+          //APSInt apsInt;
+          Expr::EvalResult tmp_result;
+          //if (icastexpr->EvaluateAsInt(apsInt, *(this->context)))
+          if(icastexpr->EvaluateAsInt(tmp_result,*(this->context)))
           {
-            return to_string(apsInt.getExtValue());
+            //return to_string(apsInt.getExtValue());
+            return to_string(tmp_result.Val.getInt().getExtValue());
           }
           else
           {
@@ -1948,6 +1994,30 @@ namespace BinderIface
           EnumConstantDecl *enumc = dyn_cast<EnumConstantDecl>(declref->getDecl());
           const APSInt apsint = enumc->getInitVal();
           ret = apsint.toString(10);
+          return ret;
+        }
+        /*
+        add by -death for aosp 10 
+        */
+        else if (ConstantExpr *constant_expr = dyn_cast<ConstantExpr>(expr)){
+         Expr::EvalResult tmp_result;
+          //if (icastexpr->EvaluateAsInt(apsInt, *(this->context)))
+          if(constant_expr->EvaluateAsInt(tmp_result,*(this->context)))
+          {
+            //return to_string(apsInt.getExtValue());
+            //cout << "is constant_expr" << endl;
+            //expr->dump();
+            return to_string(tmp_result.Val.getInt().getExtValue());
+          }
+           /*
+        add by -death for aosp 10 
+        */
+          else
+          {
+            cout << "GetCaseValue  meet some strange implicitcast expr." << endl;
+            expr->dump();
+            exit(0);
+          }
         }
         else
         {
@@ -2170,7 +2240,7 @@ namespace BinderIface
         else
         {
           DebugInfo("WalkSwitch is not completed!");
-          (*iter)->dump();
+          switchstmt->dump();
           exit(0);
         }
       }

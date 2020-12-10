@@ -67,11 +67,28 @@ def execute_one(cmd):
         filepath = cmd.split(" ")[-2]
     else:
         filepath = cmd.split(" ")[-1]
+    #for aosp 10 
+    if "AudioPolicyService.cpp" in cmd:
+            print(cmd)
+    cmd_list = cmd.split(" ")
+    if "-mllvm" in cmd_list:
+        tmp_index = cmd_list.index("-mllvm")
+        cmd_list.remove(cmd_list[tmp_index+1])
+        cmd_list.remove("-mllvm")
+        tmp_cmd = ""
+        for tmp_str in cmd_list:
+            tmp_cmd = tmp_cmd+tmp_str
+            tmp_cmd = tmp_cmd + " "
+        
+        cmd = tmp_cmd
+    
+    #print(cmd)
     if "-D __alignx(x)=__attribute__((__aligned__(x)))" in cmd:
         cmd = cmd.replace("-D __alignx(x)=__attribute__((__aligned__(x)))", "")
 
     if "tests/" in filepath or "test_" in filepath or "/Value.cpp" in filepath:
         return
+    cmd =  cmd.replace("\"","")
     cmd = cmd.replace(aosp_clang_location, manually_build_clang_location)
     cmd = cmd + " " + clang_plugin_option + " 2>&1"
     cmdlist = ["cd %s" % aosp_dir,
@@ -80,11 +97,16 @@ def execute_one(cmd):
                cmd
                ]
     cmd = '\n'.join(cmdlist)
+    #print(cmdlist)
+    #if "SurfaceFlinger.cpp" in cmd:
+        #print(cmdlist)
     try:
         out_bytes = subprocess.check_output(
             cmd, stderr=subprocess.STDOUT, shell=True,executable="/bin/bash").decode("utf-8")
-        # print(cmdlist[-1])
+       
         # print(out_bytes)
+        if "Starting Visiting CallExpr" in out_bytes:
+            print(out_bytes)
         if "is not completed!" in out_bytes:
             print(out_bytes)
             exit(0)
@@ -93,6 +115,7 @@ def execute_one(cmd):
         # code = e.returncode  # Return code
         print(out_bytes)
         print("exception meeted.")
+        print(cmd)
         exit(0)
 
 
@@ -215,6 +238,8 @@ if __name__ == "__main__":
 
         for filepath, cmd in to_processed_cmds.items():
             print("Processing file %s" % filepath)
+            if "frameworks/av/services/audiopolicy/service/AudioPolicyService.cpp" in filepath:
+                print(cmd)
             execute_one(cmd)
             if filepath not in already_preprocessed_files:    
                 open(already_preprocessed_files_storage_location,

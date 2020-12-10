@@ -38,7 +38,7 @@ type_map = load_simplified_typemap()
 
 logging.basicConfig(format='%(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)
+logger.setLevel(logging.DEBUG)
 
 # this function deal with some special cases
 # in order to generate better dependency...
@@ -86,6 +86,10 @@ def parse_one_interface(filename):
     last_switch = data['onTransact'].keys()[-1]
     transactions = data['onTransact'][last_switch]
     del transactions["DeclRef"]
+
+    if funcname not in func2svc:
+        print(funcname+"is not in func2svc")
+        return 
 
     serviceName = func2svc[funcname]["serviceName"]
     interfaceToken = func2svc[funcname]["interfaceToken"]

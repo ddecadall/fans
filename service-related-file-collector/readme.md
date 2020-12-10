@@ -23,3 +23,13 @@ However, we do not know the information about misc functions and special parcela
 > Currently, this repo already contains information about misc functions and special parcelable structures in Android 9.0.0_r46.
 
 From another perspective, it is worth noting that even AOSP is led by Google, there still are some codes that are not standard. If these codes are standard, we could run `python collector.py` to collect all files related to Android native system services once.
+
+In AOSP 10, the `showcommands` compile option is no longer supported,  
+Instead, the verbose log is always written to a compressed file in the output dir:
+!
+!   gzip -cd out/verbose.log.gz | less -R
+!
+! Older versions are saved in verbose.log.#.gz files
+
+so may need to  collect file by analyze verbose.log.#.gz
+

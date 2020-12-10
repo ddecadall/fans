@@ -12,7 +12,7 @@ context.log_level = "warning"
 
 
 class Device:
-    def __init__(self, serial, cfg: dict):
+    def __init__(self, serial, cfg):
         self.serial = serial
         self.cfg = cfg
 
@@ -442,13 +442,14 @@ class Device:
         ]
         cmd = ' '.join(cmd)
         cmd = "'sh -c \"%s\"'" % cmd
+        print cmd
         self.device_shell(cmd)
 
     def _run(self):
         log.info("start fuzzing fuzzer")
 
         log.info("  start logcat")
-        self.run_one_logcat()
+        #self.run_one_logcat()
 
         log.info("  run fuzzer")
         for i in range(self.max_instance_number):
@@ -459,10 +460,10 @@ class Device:
     def run(self):
         context.log_file = self.device_manager_log_path
         context.log_level = "warning"
-        self.reset()
-        self.prepare()
+        #self.reset()
+        #self.prepare()
         self._run()
-        self.monitor()
+        #self.monitor()
 
     def check_fuzzer_status(self):
         fuzzer_process_name = "native_service_fuzzer"
@@ -571,6 +572,6 @@ class NativeServiceFuzzerManager:
                                 str(state) + " status.")
             log.warning(
                 "===========================================================")
-
+run()
 manager = NativeServiceFuzzerManager()
 manager.start()

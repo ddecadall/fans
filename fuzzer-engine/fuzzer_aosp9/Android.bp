@@ -63,7 +63,7 @@ cc_binary {
     ],
     whole_static_libs: ["libsigchain"],
     local_include_dirs: ["include"],
-    include_dirs:["frameworks/wilhelm/src","frameworks/av/services/medialog","out/target/product/taimen/obj/STATIC_LIBRARIES/libwificond_ipc_intermediates/aidl-generated/include","system/connectivity"],
+    include_dirs:["frameworks/wilhelm/src","frameworks/av/services/medialog","out/soong/.intermediates/system/connectivity/wificond/libwificond_ipc/android_arm64_armv8-a_cortex-a73_core_static/gen/aidl/android/net/wifi","out/soong/.intermediates/system/connectivity/wificond/libwificond_ipc/android_arm64_armv8-a_cortex-a73_core_static/gen/aidl/system/connectivity/wificond/aidl/android/net/wifi","system/connectivity"],
     cflags: [
         "-DXP_UNIX",
         "-Wall",

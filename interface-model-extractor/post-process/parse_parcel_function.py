@@ -27,7 +27,7 @@ blacklist_funcname = ["android::hardware::writeToParcel","android::hardware::rea
 
 logging.basicConfig(format='%(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)
+logger.setLevel(logging.DEBUG)
 type_map = load_simplified_typemap()
 
 def check_funcname(funcname):
@@ -45,7 +45,7 @@ def check_funcname(funcname):
 
 def parse_one_parcel_function(filename):
 
-    logger.info("Start dealing with " + filename)
+    logger.debug("Start dealing with " + filename)
     data = xml2json(os.path.join(rough_function_data_dir, filename))
 
     tmp_function_file = os.path.join(

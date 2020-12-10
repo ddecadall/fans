@@ -36,14 +36,14 @@ for item in special_parcelable_function:
     special_parcelable_function_splited.append(item.split("+"))
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)
+logger.setLevel(logging.DEBUG)
 
 type_map = load_simplified_typemap()
 
 
 
 def parse_one_structure(filename):
-    logger.info("Start dealing with " + filename)
+    print("Start dealing with " + filename)
     structure = xml2json(os.path.join(rough_structure_data_dir, filename))
 
     tmp_structure_file = os.path.join(
